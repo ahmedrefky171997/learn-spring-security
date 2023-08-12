@@ -1,8 +1,8 @@
 package com.example.learnsecurity.config.security.filter;
 
 import com.example.learnsecurity.config.security.authentications.CustomAuthentication;
-import com.example.learnsecurity.config.security.managers.CustomAuthenticationManager;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -14,10 +14,11 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @Component
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class CustomAuthenticationFilter extends OncePerRequestFilter {
 
-    private final CustomAuthenticationManager authenticationManager;
+    @Value("${my.key}")
+    private String secretKey;
 
     @Override
     protected void doFilterInternal(
@@ -28,15 +29,14 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
         // create an authentication (Custom authentication)
         // delegate this authentication to the Authentication manager
         // if the authentication is authenticated then get the next filter in the chain
-        String key = String.valueOf(request.getHeader("key"));
-        CustomAuthentication ca = new CustomAuthentication(false, key);
+        // if the key isn't there then it's a different authentication paradigm
+        String key = request.getHeader("key");
 
-        var a = authenticationManager.authenticate(ca);
-
-        if (a.isAuthenticated()) {
-            SecurityContextHolder.getContext().setAuthentication(a);
-            filterChain.doFilter(request, response);
+        if (secretKey.equals(key)) {
+            SecurityContextHolder.getContext().setAuthentication(new CustomAuthentication(true, key));
+        } else {
+            SecurityContextHolder.clearContext();
         }
-
+        filterChain.doFilter(request, response);
     }
 }
